@@ -9,6 +9,12 @@ const SIZE: u32 = 36;
 const PLAYING_BARS: [f32; 5] = [10.0, 20.0, 28.0, 16.0, 8.0];
 const IDLE_BARS: [f32; 5] = [4.0; 5];
 
+/// macOS tints template images itself; elsewhere the bars need a color readable on light and dark taskbars.
+#[cfg(target_os = "macos")]
+const BAR_COLOR: [u8; 3] = [0, 0, 0];
+#[cfg(not(target_os = "macos"))]
+const BAR_COLOR: [u8; 3] = [0x8F, 0x3D, 0xFF];
+
 /// Menu bar icon showing whether a track is being shared on Discord.
 pub struct Tray {
     icon: TrayIcon,
@@ -34,12 +40,14 @@ impl Tray {
         ])
         .expect("tray menu");
 
-        let icon = TrayIconBuilder::new()
+        let builder = TrayIconBuilder::new()
             .with_menu(Box::new(menu))
-            .with_tooltip("Deezer Presence")
-            .with_icon_templated(bars_icon(&IDLE_BARS))
-            .build()
-            .expect("tray icon");
+            .with_tooltip("Deezer Presence");
+        #[cfg(target_os = "macos")]
+        let builder = builder.with_icon_templated(bars_icon(&IDLE_BARS));
+        #[cfg(not(target_os = "macos"))]
+        let builder = builder.with_icon(bars_icon(&IDLE_BARS));
+        let icon = builder.build().expect("tray icon");
 
         Self {
             icon,
@@ -77,12 +85,15 @@ impl Tray {
         if playing != self.playing {
             self.playing = playing;
             let bars = if playing { &PLAYING_BARS } else { &IDLE_BARS };
+            #[cfg(target_os = "macos")]
             let _ = self.icon.set_icon_templated(Some(bars_icon(bars)));
+            #[cfg(not(target_os = "macos"))]
+            let _ = self.icon.set_icon(Some(bars_icon(bars)));
         }
     }
 }
 
-/// Rounded, anti-aliased waveform bars drawn as a template image, so macOS tints it for light and dark menu bars.
+/// Rounded, anti-aliased waveform bars.
 fn bars_icon(heights: &[f32; 5]) -> Icon {
     const BAR_WIDTH: f32 = 4.0;
     const GAP: f32 = 3.0;
@@ -100,8 +111,11 @@ fn bars_icon(heights: &[f32; 5]) -> Icon {
                 let dx = x as f32 + 0.5 - center_x;
                 let dy = ((y as f32 + 0.5 - center_y).abs() - half).max(0.0);
                 let coverage = (0.5 - (dx.hypot(dy) - radius)).clamp(0.0, 1.0);
-                let alpha = &mut rgba[((y * SIZE + x) * 4 + 3) as usize];
-                *alpha = (*alpha).max((coverage * 255.0).round() as u8);
+                let alpha = (coverage * 255.0).round() as u8;
+                let pixel = &mut rgba[((y * SIZE + x) * 4) as usize..][..4];
+                if alpha > pixel[3] {
+                    pixel.copy_from_slice(&[BAR_COLOR[0], BAR_COLOR[1], BAR_COLOR[2], alpha]);
+                }
             }
         }
     }

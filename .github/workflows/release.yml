@@ -8,11 +8,10 @@ permissions:
   contents: write
 
 jobs:
-  macos:
-    runs-on: macos-latest
+  version:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-
       - name: Check that the tag matches Cargo.toml
         run: |
           version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
@@ -21,12 +20,46 @@ jobs:
             exit 1
           fi
 
+  macos:
+    needs: version
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
       - run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - run: ./scripts/bundle-macos.sh --universal --zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/*.zip
 
-      - name: Build the app
-        run: ./scripts/bundle-macos.sh --universal --zip
+  windows:
+    needs: version
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: cargo build --release
+      - name: Package
+        shell: pwsh
+        run: |
+          $version = "$env:GITHUB_REF_NAME".TrimStart("v")
+          New-Item -ItemType Directory -Force -Path "dist/Deezer Presence" | Out-Null
+          Copy-Item target/release/deezer-presence.exe "dist/Deezer Presence/Deezer Presence.exe"
+          Copy-Item LICENSE "dist/Deezer Presence/"
+          Compress-Archive -Path "dist/Deezer Presence" -DestinationPath "dist/Deezer-Presence-$version-windows.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*.zip
 
+  publish:
+    needs: [macos, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/*.zip --title "$GITHUB_REF_NAME" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" dist/*.zip --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes

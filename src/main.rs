@@ -1,3 +1,5 @@
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
 mod autostart;
 mod deezer;
 mod i18n;
@@ -41,6 +43,7 @@ fn main() {
     let client_id = env::var("DISCORD_CLIENT_ID").unwrap_or_else(|_| DEFAULT_CLIENT_ID.to_owned());
     autostart::refresh();
 
+    #[cfg_attr(not(target_os = "macos"), allow(unused_mut))]
     let mut event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
     #[cfg(target_os = "macos")]
     event_loop.set_activation_policy(ActivationPolicy::Accessory);
@@ -105,14 +108,14 @@ fn run_presence(client_id: &str, on_change: impl Fn(Option<NowPlaying>)) {
     source::spawn(tx);
 
     let mut presence = Presence::new(client_id);
-    let mut lookup = deezer::Lookup::default();
+    let mut lookup = deezer::Lookup::new();
     let mut current: Option<NowPlaying> = None;
 
     loop {
         match rx.recv_timeout(REFRESH) {
             Ok(update) => {
                 let unchanged = match (&update, &current) {
-                    (Some(a), Some(b)) => is_same_moment(a, b),
+                    (Some(a), Some(b)) => a.same_moment(b),
                     (None, None) => true,
                     _ => false,
                 };
@@ -143,12 +146,4 @@ fn run_presence(client_id: &str, on_change: impl Fn(Option<NowPlaying>)) {
             None => presence.clear(),
         }
     }
-}
-
-/// Same track and state, ignoring small drift of the computed start time (a seek counts as a change).
-fn is_same_moment(a: &NowPlaying, b: &NowPlaying) -> bool {
-    a.title == b.title
-        && a.artist == b.artist
-        && a.playing == b.playing
-        && (a.started_at_ms() - b.started_at_ms()).abs() < 2000
 }

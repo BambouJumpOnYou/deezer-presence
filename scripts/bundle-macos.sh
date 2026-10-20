@@ -1,5 +1,5 @@
 #!/bin/sh
-# Builds "dist/Deezer Presence.app" (needs cmake for the adapter on first run).
+# Builds "dist/Deezer Presence.app".
 # --universal: Apple Silicon + Intel binary. --zip: also writes dist/Deezer-Presence-<version>-macos.zip.
 set -eu
 
@@ -19,7 +19,6 @@ BIN=deezer-presence
 BUNDLE_ID=io.github.bamboujumponyou.deezer-presence
 VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' "$ROOT/Cargo.toml" | head -1)
 
-[ -d "$ROOT/vendor/mediaremote-adapter" ] || "$ROOT/scripts/build-adapter.sh"
 if [ "$UNIVERSAL" = 1 ]; then
     for target in aarch64-apple-darwin x86_64-apple-darwin; do
         cargo build --release --target "$target" --manifest-path "$ROOT/Cargo.toml"
@@ -37,7 +36,6 @@ fi
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BUILT" "$APP/Contents/MacOS/$BIN"
-cp -R "$ROOT/vendor/mediaremote-adapter" "$APP/Contents/Resources/"
 
 ICONSET=$(mktemp -d)/AppIcon.iconset
 mkdir -p "$ICONSET"

@@ -1,4 +1,4 @@
-"""Renders assets/logo.png (README) and assets/AppIcon.png (macOS app icon). Pure Python, no dependencies."""
+"""Renders assets/logo.png (README), assets/AppIcon.png (macOS) and assets/AppIcon.ico (Windows). No dependencies."""
 import math
 import struct
 import sys
@@ -55,7 +55,7 @@ def draw_squircle(px, size, inset, radius):
                 px[y][x] = blend(px[y][x], color, a)
 
 
-def write_png(path, px):
+def png_bytes(px):
     size = len(px)
     raw = b"".join(b"\0" + bytes(c for p in row for c in p) for row in px)
 
@@ -63,7 +63,11 @@ def write_png(path, px):
         return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
 
     header = struct.pack(">IIBBBBB", size, size, 8, 6, 0, 0, 0)
-    path.write_bytes(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b"")
+
+
+def write_png(path, px):
+    path.write_bytes(png_bytes(px))
 
 
 def logo():
@@ -82,8 +86,26 @@ def app_icon():
     write_png(ASSETS / "AppIcon.png", px)
 
 
+def windows_icon():
+    # Full-bleed rounded square, as Windows icons don't use the macOS grid margins.
+    images = []
+    for size in (16, 24, 32, 48, 64, 128, 256):
+        px = [[(0, 0, 0, 0)] * size for _ in range(size)]
+        draw_squircle(px, size, 0, size * 0.22)
+        draw_bars(px, size, size * 0.12, size * 0.12, size * 0.76)
+        images.append((size, png_bytes(px)))
+    header = struct.pack("<HHH", 0, 1, len(images))
+    offset = 6 + 16 * len(images)
+    entries, blobs = b"", b""
+    for size, data in images:
+        dim = 0 if size == 256 else size
+        entries += struct.pack("<BBBBHHII", dim, dim, 0, 0, 1, 32, len(data), offset + len(blobs))
+        blobs += data
+    (ASSETS / "AppIcon.ico").write_bytes(header + entries + blobs)
+
+
 if __name__ == "__main__":
     ASSETS.mkdir(exist_ok=True)
-    targets = sys.argv[1:] or ["logo", "app_icon"]
+    targets = sys.argv[1:] or ["logo", "app_icon", "windows_icon"]
     for name in targets:
         globals()[name]()
