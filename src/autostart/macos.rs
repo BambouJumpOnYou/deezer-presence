@@ -29,15 +29,6 @@ pub fn set_enabled(enabled: bool) -> io::Result<()> {
     fs::write(&path, plist(&exe.to_string_lossy()))
 }
 
-/// Keeps the LaunchAgent pointing at this binary if the app was moved since it was enabled.
-pub fn refresh() {
-    if is_enabled()
-        && let Err(e) = set_enabled(true)
-    {
-        eprintln!("launch at login: {e}");
-    }
-}
-
 fn plist(exe: &str) -> String {
     let exe = exe
         .replace('&', "&amp;")
