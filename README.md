@@ -10,13 +10,13 @@ Spotify gets a native Discord integration. Deezer doesn't. This fixes that.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![macOS](https://img.shields.io/badge/macOS-supported-lightgrey?logo=apple)
-![Windows](https://img.shields.io/badge/Windows-beta-orange?logo=windows)
+![Windows](https://img.shields.io/badge/Windows-supported-lightgrey?logo=windows)
 [![CI](https://github.com/BambouJumpOnYou/deezer-presence/actions/workflows/ci.yml/badge.svg)](https://github.com/BambouJumpOnYou/deezer-presence/actions/workflows/ci.yml)
 ![Built with Rust](https://img.shields.io/badge/built%20with-Rust-dea584?logo=rust)
 
+<img src="assets/screenshot.png" width="360" style="margin-top: 20px;">
 </div>
 
-<img src="assets/screenshot.png" width="360">
 
 ## Features
 
@@ -57,7 +57,7 @@ Requires macOS 12 or later, on Apple Silicon or Intel.
 
    </details>
 
-### Windows (beta)
+### Windows
 
 Requires Windows 10 or 11.
 
@@ -120,7 +120,6 @@ Note that the Discord button is shown in *your* language to everyone who views y
 
 - **Not signed.** macOS Gatekeeper and Windows SmartScreen warn about the app the first time.
   See [Getting started](#getting-started).
-- **Windows support is new.** If something looks off, please [open an issue](https://github.com/BambouJumpOnYou/deezer-presence/issues).
 - **Relies on private macOS APIs.** If a macOS update changes them, the status will stop updating until
   deezer-presence is updated. Deezer itself will keep working normally.
 
